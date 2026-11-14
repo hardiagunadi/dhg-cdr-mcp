@@ -1,22 +1,22 @@
-# 图片导入：位图、SVG、替换
+# Impor gambar: bitmap, SVG, penggantian
 
-## 工具
+## Tool
 
-- **`import_bitmap`**：把本地图片导入画布（剪贴板粘贴，单张稳定）。参数：`image_path`、可选 `x_mm`/`y_mm`（左上角）、`width_mm`（指定宽度等比缩放）；返回 `shape_id`。
-- **`import_svg`**：把本地 **SVG 矢量文件**导入画布，保持为可编辑矢量（通常是一个群组，也可能多个散开对象）。参数：`svg_path`、可选 `x_mm`/`y_mm`（左上角，不给则自动找空位）；返回 `shape_id`、`shape_count`、`shape_ids`、尺寸。
-  - **自动解锁**：导入后自动检测并解锁本次导入的锁定对象（等价右键→解锁，递归群组内部、不解散群组；只解锁本次导入的，不碰其他锁定对象，返回里 `unlocked_object_count` 标明）。当前图层被锁定时也会自动解锁（`layer_was_unlocked`）。
-- **`replace_bitmap`**：替换已有位图（支持 PowerClip 容器内部）。
-- **禁止让用户手动 Ctrl+I 导入**：图片在本地时直接用工具自动导入。
+- **`import_bitmap`**: mengimpor gambar lokal ke kanvas (tempel lewat clipboard, stabil per gambar). Parameter: `image_path`, opsional `x_mm`/`y_mm` (kiri atas), `width_mm` (menentukan lebar dengan skala proporsional); mengembalikan `shape_id`.
+- **`import_svg`**: mengimpor **file vektor SVG** lokal ke kanvas, tetap berupa vektor yang bisa diedit (biasanya satu grup, bisa juga beberapa objek terpisah). Parameter: `svg_path`, opsional `x_mm`/`y_mm` (kiri atas, jika tidak diberikan dicarikan ruang kosong otomatis); mengembalikan `shape_id`, `shape_count`, `shape_ids`, ukuran.
+  - **Buka kunci otomatis**: setelah impor otomatis mendeteksi dan membuka kunci objek terkunci hasil impor ini (setara klik kanan → Unlock, rekursif ke dalam grup, grup tidak dibongkar; hanya membuka kunci yang diimpor kali ini, tidak menyentuh objek terkunci lain, `unlocked_object_count` tercantum di hasil). Jika layer saat ini terkunci juga dibuka otomatis (`layer_was_unlocked`).
+- **`replace_bitmap`**: mengganti bitmap yang ada (mendukung di dalam kontainer PowerClip).
+- **Dilarang meminta pengguna mengimpor manual dengan Ctrl+I**: jika gambar ada di lokal, langsung impor otomatis dengan tool.
 
-## 超大图自动处理（不会崩）
+## Penanganan otomatis gambar sangat besar (tidak crash)
 
-- `import_bitmap`/`trace_bitmap` 会先把图片等比降采样到最长边 2000px、按 300 DPI 导入，**导入后最长边固定 ≤169mm**（无论原图多大；画布上已有的超大位图描摹前会自动缩到 400mm 内）。
-- 已验证 8000×6000、12000×800 等超大图导入均为 169mm、描摹几秒完成，不会再因尺寸过大超时断开（Transport closed）。
+- `import_bitmap`/`trace_bitmap` lebih dulu men-downsample gambar secara proporsional hingga sisi terpanjang 2000px, mengimpor pada 300 DPI, **setelah impor sisi terpanjang tetap ≤169mm** (berapa pun ukuran asli; bitmap besar yang sudah ada di kanvas otomatis diperkecil hingga dalam 400mm sebelum di-trace).
+- Sudah diverifikasi: gambar sangat besar seperti 8000×6000, 12000×800 semuanya diimpor menjadi 169mm, trace selesai dalam beberapa detik, tidak lagi timeout karena ukuran terlalu besar hingga terputus (Transport closed).
 
-## 自动定位（空白页居中；有内容找空位；满了才放周围）
+## Penempatan otomatis (tengah di halaman kosong; jika ada konten cari ruang kosong; baru di sekitar jika penuh)
 
-- 未指定位置时：
-  - **页面完全为空 → 直接放到页面正中心（水平+垂直居中）**
-  - 有内容 → 在页面内找不重叠空位（先左上角、再沿现有元素右/下顺延，仍在页面内）
-  - 页面内确实放不下 → 才放到页面右侧、下侧的粘贴板区域
-- 不要在页面空着时放到页面外或左上角。返回里 `on_page` 标明是否在页面内。
+- Jika posisi tidak ditentukan:
+  - **Halaman sama sekali kosong → langsung ditempatkan di tengah halaman (tengah horizontal + vertikal)**
+  - Ada konten → cari ruang kosong tanpa tumpang tindih di dalam halaman (dahulu kiri atas, lalu lanjut ke kanan/bawah elemen yang ada, tetap dalam halaman)
+  - Benar-benar tidak muat di halaman → baru ditempatkan di area pasteboard di kanan atau bawah halaman
+- Jangan menempatkan di luar halaman atau di kiri atas saat halaman kosong. `on_page` di hasil menunjukkan apakah berada di dalam halaman.

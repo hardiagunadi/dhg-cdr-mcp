@@ -1,58 +1,58 @@
-# 组织架构图（区域内自动绘制，框+文字+正交连线一次成型）
+# Bagan organisasi (digambar otomatis dalam area, kotak + teks + garis siku sekaligus)
 
-`create_org_chart`：在用户指定区域内，把组织树画成标准架构图——圆角框、框内居中文字、父子之间正交折线连接，**严格按区域尺寸等比缩放、整体居中、不溢出**，画完可逐个编辑。
+`create_org_chart`: di dalam area yang ditentukan pengguna, menggambar pohon organisasi sebagai bagan standar — kotak sudut bulat, teks di tengah kotak, garis siku penghubung induk-anak, **diskalakan proporsional tepat sesuai ukuran area, diletakkan di tengah, tidak meluap**, setelah selesai tiap elemen bisa diedit.
 
-## 流程
+## Alur
 
-**第 1 步：让用户先指定绘制区域（🔴 优先让工具自动读选中框）**
-- 让用户在 CDR 里**选中要放架构图的矩形框并保持选中**，然后**直接调 `create_org_chart`、不传 region**——工具自动读当前选中框作为区域，把图（含标题）画在框内。这是最可靠的方式，避免中间选中状态丢失或坐标映射出错。
-- 也可用 `region_shape_id` 指定某个框；或先 `get_selection` 取选中框的 `left_x_mm/top_y_mm/width_mm/height_mm` 拼 region（x=left_x_mm，y=top_y_mm，width=width_mm，height=height_mm）传入；用户也可直接给区域尺寸。
-- 工具会在区域四周自动留 3mm 安全边距，内容不贴边、不溢出。
-- 提示"没有找到绘制区域"则让用户先选中框再调。必须先确定区域。
+**Langkah 1: Minta pengguna menentukan area gambar dulu (🔴 utamakan tool membaca kotak terpilih otomatis)**
+- Minta pengguna **memilih persegi tempat bagan di CDR dan tetap memilihnya**, lalu **langsung panggil `create_org_chart` tanpa region** — tool otomatis membaca kotak terpilih sebagai area dan menggambar bagan (termasuk judul) di dalam kotak. Ini cara paling andal, menghindari status pilihan hilang atau pemetaan koordinat salah di tengah jalan.
+- Bisa juga menentukan satu kotak dengan `region_shape_id`; atau `get_selection` dulu untuk mengambil `left_x_mm/top_y_mm/width_mm/height_mm` kotak terpilih dan menyusun region (x=left_x_mm, y=top_y_mm, width=width_mm, height=height_mm); pengguna juga boleh langsung memberi ukuran area.
+- Tool otomatis menyisakan margin aman 3mm di sekeliling area, konten tidak menempel tepi dan tidak meluap.
+- Jika muncul pesan "area gambar tidak ditemukan", minta pengguna memilih kotak dulu lalu panggil lagi. Area wajib ditentukan dulu.
 
-**第 2 步：拿组织数据（三种给法都支持）**
-1. **大白话**："总经理下面 3 个副总，第一个副总管安全部、综合部、市场部……" → 你整理成树。
-2. **缩进文本**：每行一个职位，用空格/Tab 表示层级（传给 `text`）。
-3. **Excel/结构化数据**：整理成嵌套树（传给 `data`）。
-4. （特殊）用户已在 CDR 摆好框、只需对齐连线——本工具暂不支持，告知用户。
+**Langkah 2: Ambil data organisasi (tiga cara pemberian semuanya didukung)**
+1. **Bahasa sehari-hari**: "Di bawah direktur utama ada 3 wakil direktur, wakil direktur pertama membawahi departemen keselamatan, umum, pemasaran……" → Anda susun menjadi pohon.
+2. **Teks berindentasi**: satu jabatan per baris, tingkat ditunjukkan dengan spasi/Tab (diberikan ke `text`).
+3. **Excel/data terstruktur**: disusun menjadi pohon bersarang (diberikan ke `data`).
+4. (Khusus) pengguna sudah menata kotak di CDR dan hanya perlu merapikan garis penghubung — tool ini belum mendukung, beri tahu pengguna.
 
-**第 3 步：把整理好的层级关系给用户核对**（确认没漏人、没排错、单根），用户确认后再画。
+**Langkah 3: Berikan hubungan hierarki yang sudah disusun kepada pengguna untuk diperiksa** (pastikan tidak ada yang terlewat, tidak salah susun, satu akar), gambar setelah pengguna mengonfirmasi.
 
-**第 4 步：确定方向（🔴 必须用弹窗数字选项，禁止输入框让用户手输）**
-- 用 `interaction.ask` 弹窗、**带 display_option（可点击按钮）**，display_message 同时用 1/2 编号：
-  - question_id：`org_direction`；header：`横版/竖版`
-  - display_message：`请选择架构图方向（我给出了建议）：`
-  - 选项：
-    1. option_id `vertical`，label `竖版（从上到下）`，description：`适合宽而浅、每层人多的结构（底层一排多个部门）。`
-    2. option_id `horizontal`，label `横版（从左到右）`，description：`适合窄而深、层级多的结构（一级一级往下）。`
-- display_message 里给出推荐（宽浅选竖、深窄选横）；**禁止自由输入框手输方向**。
+**Langkah 4: Tentukan arah (🔴 wajib dengan dialog pilihan angka, dilarang kotak input yang meminta pengguna mengetik)**
+- Pakai dialog `interaction.ask` **dengan display_option (tombol yang bisa diklik)**, display_message juga bernomor 1/2:
+  - question_id: `org_direction`; header: `Horizontal/Vertikal`
+  - display_message: `Pilih arah bagan (saya sertakan saran):`
+  - Pilihan:
+    1. option_id `vertical`, label `Vertikal (atas ke bawah)`, description: `Cocok untuk struktur lebar dan dangkal, banyak orang tiap tingkat (tingkat bawah satu baris berisi banyak departemen).`
+    2. option_id `horizontal`, label `Horizontal (kiri ke kanan)`, description: `Cocok untuk struktur sempit dan dalam, banyak tingkat (turun tingkat demi tingkat).`
+- Berikan rekomendasi di display_message (lebar-dangkal pilih vertikal, dalam-sempit pilih horizontal); **dilarang kotak input bebas untuk mengetik arah**.
 
-**第 5 步：选风格（🔴 必须弹窗数字选项，禁止输入框）**
-- 用 `interaction.ask` 弹窗、带 display_option，display_message 用 1-7 编号：
-  - question_id：`org_style`；header：`架构图风格`
-  - display_message：`请选择架构图风格：`
-  - 选项：
-    1. option_id `orange`，label `橙金商务风`，description：`浅米黄底+橙色描边，最通用（默认推荐）。`
-    2. option_id `blue`，label `经典商务蓝`，description：`浅蓝底+蓝色描边，正式稳重。`
-    3. option_id `gray`，label `简约灰边风`，description：`白底+灰色描边，简洁干净。`
-    4. option_id `solid`，label `实色填充风`，description：`深色底+白字，对比强烈。`
-    5. option_id `green`，label `绿色清新风`，description：`浅绿底+绿色描边。`
-    6. option_id `blackgold`，label `黑金高端风`，description：`黑底+金色描边，高端质感。`
-    7. option_id `custom`，label `自定义`，description：`你描述颜色，我用 custom_style 实现。`
-- **禁止自由输入框手输风格**。
+**Langkah 5: Pilih gaya (🔴 wajib dialog pilihan angka, dilarang kotak input)**
+- Pakai dialog `interaction.ask` dengan display_option, display_message bernomor 1-7:
+  - question_id: `org_style`; header: `Gaya bagan`
+  - display_message: `Pilih gaya bagan:`
+  - Pilihan:
+    1. option_id `orange`, label `Bisnis oranye-emas`, description: `Latar krem muda + outline oranye, paling umum (rekomendasi default).`
+    2. option_id `blue`, label `Biru bisnis klasik`, description: `Latar biru muda + outline biru, formal dan mantap.`
+    3. option_id `gray`, label `Sederhana tepi abu-abu`, description: `Latar putih + outline abu-abu, ringkas dan bersih.`
+    4. option_id `solid`, label `Isi warna solid`, description: `Latar gelap + teks putih, kontras kuat.`
+    5. option_id `green`, label `Hijau segar`, description: `Latar hijau muda + outline hijau.`
+    6. option_id `blackgold`, label `Hitam-emas premium`, description: `Latar hitam + outline emas, kesan premium.`
+    7. option_id `custom`, label `Kustom`, description: `Anda menjelaskan warna, saya wujudkan dengan custom_style.`
+- **Dilarang kotak input bebas untuk mengetik gaya**.
 
-**第 6 步：确认大标题（用户忘了也要主动提醒，用"输入文字"，不是数字选项）**
-- 用户已在提示词给标题 → 直接用，进入第 7 步。
-- 用户没给 → 主动提醒，用 `interaction.ask` 的**自由输入题（不带 display_option、不给 1/2/3）**，让用户直接输入：
-  - question_id：`org_title`；header：`大标题`
-  - display_message：`需要在架构图顶部加一个大标题吗？需要的话，请直接把标题文字发给我（例如“XX公司组织架构图”）；不需要就回复“不需要”。`
-- 用户输入标题 → 用它；回复"不需要/不用" → 不加。
-- 标题默认加大加粗深色（`title_style="dark"`）；想换主题色或自定义会在输入时说明。
+**Langkah 6: Konfirmasi judul besar (jika pengguna lupa tetap ingatkan secara proaktif, pakai "input teks", bukan pilihan angka)**
+- Pengguna sudah memberi judul di prompt → langsung pakai, lanjut ke langkah 7.
+- Pengguna belum memberi → ingatkan secara proaktif, pakai **pertanyaan input bebas** `interaction.ask` (tanpa display_option, tanpa nomor 1/2/3), agar pengguna mengetik langsung:
+  - question_id: `org_title`; header: `Judul besar`
+  - display_message: `Perlu judul besar di bagian atas bagan? Jika perlu, kirim langsung teks judulnya (mis. "Bagan Organisasi PT XX"); jika tidak perlu, balas "tidak perlu".`
+- Pengguna mengetik judul → pakai; membalas "tidak perlu/tidak usah" → tidak ditambahkan.
+- Judul default besar, tebal, warna gelap (`title_style="dark"`); jika ingin warna tema atau kustom, pengguna menyebutkannya saat input.
 
-**第 7 步：调 `create_org_chart` 一次绘制**
-- 关键参数：`data`（嵌套树）或 `text`（缩进文本，二选一）、`direction`、`region`、`style`；
-- 可选：`font_family`（默认微软雅黑）、`base_font_pt`（默认 12，按区域缩放）、`h_gap`/`v_gap`（同级/层间间距）、`corner_radius`、`custom_style`。
-- **大标题**：第 6 步拿到的标题传 `title`；标题画在区域内顶部居中、加粗，架构图自动缩小下移、整体仍在区域内；标题样式用 `title_style`（`dark` 默认 / `theme` 主色 / `custom` 配合 `title_color`）；标题过长自动收字号保证不换行。
-- 工具自动等比缩放、居中；区域过小导致字号低于 7pt 会**直接报错**并建议换方向/扩大区域，不会留半成品。
+**Langkah 7: Panggil `create_org_chart` sekali untuk menggambar**
+- Parameter kunci: `data` (pohon bersarang) atau `text` (teks berindentasi, pilih salah satu), `direction`, `region`, `style`;
+- Opsional: `font_family` (default Microsoft YaHei), `base_font_pt` (default 12, diskalakan sesuai area), `h_gap`/`v_gap` (jarak setingkat/antar tingkat), `corner_radius`, `custom_style`.
+- **Judul besar**: judul dari langkah 6 diberikan ke `title`; judul digambar di tengah atas dalam area dan ditebalkan, bagan otomatis mengecil dan turun, keseluruhan tetap dalam area; gaya judul dengan `title_style` (`dark` default / `theme` warna utama / `custom` bersama `title_color`); judul yang terlalu panjang otomatis diperkecil agar tidak berganti baris.
+- Tool otomatis menskalakan proporsional dan menengahkan; jika area terlalu kecil sehingga font di bawah 7pt akan **langsung error** dan menyarankan ganti arah/perbesar area, tidak meninggalkan hasil setengah jadi.
 
-**第 8 步：成功后不渲染预览，直接提醒在 CDR 查看**；不要调 `render_preview`，提示"已绘制完成，请在 CDR 中查看"。不自动保存；用户说改字/换风格/改标题，再按框编辑。
+**Langkah 8: Setelah berhasil jangan render pratinjau, langsung ingatkan untuk cek di CDR**; jangan panggil `render_preview`, cukup beri tahu "sudah digambar, silakan cek di CDR". Tidak menyimpan otomatis; jika pengguna berkata ubah teks/ganti gaya/ubah judul, edit per kotak.

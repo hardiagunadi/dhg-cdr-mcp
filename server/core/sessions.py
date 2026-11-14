@@ -99,7 +99,21 @@ def _document_fingerprint(doc: Any) -> str:
                     str(round(float(_safe_attr(page, "SizeHeight", 0) or 0), 4)),
                 ]
             )
-            add_shapes(page.Shapes)
+            # Large documents (thousands of objects) made the full walk exceed the COM timeout.
+            # Fingerprint the shape count plus a bounded sample of shapes instead.
+            shapes = page.Shapes
+            count = int(_safe_attr(shapes, "Count", 0) or 0)
+            parts.append(f"count:{count}")
+            if count > 300:
+                sample = []
+                for i in list(range(1, 41)) + list(range(max(41, count - 39), count + 1)):
+                    try:
+                        sample.append(shapes.Item(i))
+                    except Exception:
+                        pass
+                add_shapes(sample)
+            else:
+                add_shapes(shapes)
     except Exception:
         pass
     digest = hashlib.sha256("\n".join(parts).encode("utf-8", "replace")).hexdigest()

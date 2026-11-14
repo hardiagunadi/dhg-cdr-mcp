@@ -1,34 +1,34 @@
-# 批量搜图 → PowerClip 置入选中框（广告店高频）
+# Cari gambar massal → tempatkan ke frame terpilih dengan PowerClip (sering dipakai toko iklan)
 
-`batch_search_and_place`：**一次工具调用完成全部**——自动读选中的框、按阅读顺序（从上到下、行内从左到右）、去素材站搜图、下载、PowerClip 进框，**默认按比例填充（fill），图片完整保留、可进容器手动调整**。
+`batch_search_and_place`: **satu panggilan tool menyelesaikan semuanya** — otomatis membaca frame yang dipilih, mengurutkan menurut urutan baca (atas ke bawah, dalam baris kiri ke kanan), mencari gambar di situs materi, mengunduh, dan PowerClip ke dalam frame; **default mengisi proporsional (fill), gambar tetap utuh dan bisa diatur manual dari dalam kontainer**.
 
-🔴 **必须用 `batch_search_and_place` 一次调用，禁止用浏览器手动搜图、禁止手动拆成 get_selection + batch_search_images + batch_place_images**（手动拆步会因并行返回顺序不同导致图片错位）。
+🔴 **Wajib memakai satu panggilan `batch_search_and_place`, dilarang mencari gambar manual lewat browser, dilarang memecah manual menjadi get_selection + batch_search_images + batch_place_images** (pemecahan manual membuat gambar salah tempat karena urutan hasil paralel berbeda).
 
-## 流程
+## Alur
 
-**第 1 步：让用户先在 CDR 里选中要置入图片的框/图形**（可多选、框选）。
-- 不用自己调 get_selection：`batch_search_and_place` 不传 container_ids 时会自动读当前选中框，并按阅读顺序排列。
-- 用户没选中，工具会返回提示，让用户框选后重试。
+**Langkah 1: Minta pengguna memilih dulu frame/bentuk tujuan gambar di CDR** (boleh multi-pilih atau pilih kotak).
+- Tidak perlu memanggil get_selection sendiri: jika `batch_search_and_place` dipanggil tanpa container_ids, ia otomatis membaca frame terpilih dan mengurutkannya menurut urutan baca.
+- Jika pengguna belum memilih, tool mengembalikan petunjuk agar pengguna memilih lalu mencoba lagi.
 
-**第 2 步：确定关键词（两种给法）**
-- **按顺序给**：用户发"苹果""香蕉""橙子"…，数量必须与框数一致；**对不上时必须提示补齐或调整**，不要硬凑。
-- **读框旁边标签**：框临近位置有文字标签，用 `inspect_document` 读文字，按文字与每个框的**距离就近匹配**。
-- 多个框共用同一关键词时只给 1 个（工具自动套用全部框）。
+**Langkah 2: Tentukan kata kunci (dua cara pemberian)**
+- **Diberikan berurutan**: pengguna mengirim "apel" "pisang" "jeruk"..., jumlahnya harus sama dengan jumlah frame; **jika tidak cocok wajib minta dilengkapi atau disesuaikan**, jangan dipaksakan.
+- **Membaca label di samping frame**: jika ada label teks di dekat frame, baca teksnya dengan `inspect_document`, cocokkan menurut **jarak terdekat** antara teks dan tiap frame.
+- Jika beberapa frame memakai kata kunci yang sama, cukup beri 1 (tool otomatis menerapkannya ke semua frame).
 
-**第 3 步：直接调 `batch_search_and_place` 一次完成**
-- 参数：`keywords`（顺序对应阅读顺序）；`fit_mode` 默认 `"fill"`，可选：
-  - `fill`：按比例填满框、不变形、超出部分被裁，**图完整可进 PowerClip 编辑**（默认）
-  - `fit`：按比例全图显示、可能留白
-  - `stretch`：拉伸填满、可能变形
-  - `center`：原图大小居中
-- 工具内部自动：请求素材接口拿候选 → 🔴 质量筛选（排除长边<1000px 小图、水印重灾站点、动图、模糊/变形/无关图）→ 快速宿主优先、并行下载、提前取消 → 自动降采样（最长边 2000px）→ 导入、PowerClip、缩放居中，不会崩。
-- 选源、图片类型由工具自动判断，**不弹窗问用户、不暴露网址**。
+**Langkah 3: Langsung panggil `batch_search_and_place` sekali jalan**
+- Parameter: `keywords` (berurutan sesuai urutan baca); `fit_mode` default `"fill"`, pilihan:
+  - `fill`: isi frame secara proporsional tanpa distorsi, bagian lebih dipotong, **gambar utuh dan bisa diedit di PowerClip** (default)
+  - `fit`: tampilkan seluruh gambar secara proporsional, mungkin ada ruang kosong
+  - `stretch`: regangkan hingga penuh, mungkin terdistorsi
+  - `center`: ukuran asli di tengah
+- Tool otomatis melakukan secara internal: meminta kandidat dari antarmuka materi → 🔴 penyaringan kualitas (kecualikan gambar kecil sisi terpanjang <1000px, situs penuh watermark, animasi, gambar buram/terdistorsi/tidak relevan) → host cepat diprioritaskan, unduh paralel, pembatalan dini → downsample otomatis (sisi terpanjang 2000px) → impor, PowerClip, skala dan tengahkan, tanpa crash.
+- Pemilihan sumber dan jenis gambar ditentukan otomatis oleh tool, **tidak menampilkan dialog ke pengguna, tidak menampilkan URL**.
 
-**第 4 步：置入成功后不渲染预览，直接提醒在 CDR 查看**
-- 不要调 `render_preview`，直接提示"已置入完成，请在 CDR 中查看"。
-- 有关键词搜不到合格图，工具返回失败的关键词，让用户换词或调低清晰度后重试（已成功的图保留）。
-- 用户说"换第 X 个"，可对该框单独调 `batch_search_and_place`（传该框 container_id + 新关键词），其余不动。
+**Langkah 4: Setelah berhasil ditempatkan, jangan render pratinjau, langsung ingatkan untuk cek di CDR**
+- Jangan panggil `render_preview`, cukup beri tahu "sudah ditempatkan, silakan cek di CDR".
+- Jika ada kata kunci yang tidak menemukan gambar memenuhi syarat, tool mengembalikan kata kunci yang gagal; minta pengguna mengganti kata atau menurunkan ketajaman lalu coba lagi (gambar yang sudah berhasil dipertahankan).
+- Jika pengguna berkata "ganti yang ke-X", panggil `batch_search_and_place` hanya untuk frame itu (dengan container_id frame tersebut + kata kunci baru), sisanya tidak diubah.
 
-**注意：** 不要在置入前用 PIL 自己裁剪图片（会永久丢失、用户无法手动调整）；fill 模式下图是完整的，只是显示被 PowerClip 裁切。
+**Perhatian:** jangan memotong gambar sendiri dengan PIL sebelum ditempatkan (hilang permanen, pengguna tak bisa menyesuaikan); pada mode fill gambarnya utuh, hanya tampilannya dipotong oleh PowerClip.
 
-**相关工具**：`batch_search_images`（只搜图下载、不置入，用于用户只要图片素材时）；`batch_search_and_place`（搜图+置入，本场景默认）。
+**Tool terkait**: `batch_search_images` (hanya cari dan unduh, tidak ditempatkan, untuk jika pengguna hanya butuh materi gambar); `batch_search_and_place` (cari + tempatkan, default untuk skenario ini).

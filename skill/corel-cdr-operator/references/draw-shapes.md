@@ -1,41 +1,41 @@
-# 自由曲线绘制 与 渐变填充
+# Menggambar kurva bebas dan isi gradien
 
-## 自由曲线（旗帜、波浪、飘带、不规则图形）
+## Kurva bebas (bendera, gelombang, pita, bentuk tak beraturan)
 
-需要画非矩形轮廓（飘扬红旗、波浪、飘带、异形底版）时，用 `create_curve_shape`，不要用矩形硬凑。
+Untuk menggambar kontur non-persegi (bendera berkibar, gelombang, pita, alas bentuk khusus), pakai `create_curve_shape`, jangan dipaksakan dengan persegi.
 
-**参数：**
-- `subpaths`：路径数组，每个路径：
-  - `points`：点列表，单位 mm，原点在页面左上角、y 向下
-    - 第一个点是起点：`{"x": 50, "y": 50}`
-    - 后续每点为一段：
-      - 直线段 `{"type": "line", "x": 100, "y": 100}`
-      - 贝塞尔曲线段 `{"type": "curve", "x": 100, "y": 40,
-        "cp1x": 60, "cp1y": 50,   # 控制柄1，靠近上一个点
-        "cp2x": 90, "cp2y": 40}`  # 控制柄2，靠近当前点
-  - `closed`：是否封闭（填色必须 true）
-- `fill_rgb`：填充色 `[r,g,b]`；或 `fill_cmyk`：`[c,m,y,k]`
-- 默认无描边
+**Parameter:**
+- `subpaths`: array path, tiap path berisi:
+  - `points`: daftar titik, satuan mm, titik asal di kiri atas halaman, y ke bawah
+    - Titik pertama adalah titik awal: `{"x": 50, "y": 50}`
+    - Tiap titik berikutnya adalah satu segmen:
+      - Segmen garis lurus `{"type": "line", "x": 100, "y": 100}`
+      - Segmen kurva Bezier `{"type": "curve", "x": 100, "y": 40,
+        "cp1x": 60, "cp1y": 50,   # handle kontrol 1, dekat titik sebelumnya
+        "cp2x": 90, "cp2y": 40}`  # handle kontrol 2, dekat titik saat ini
+  - `closed`: apakah tertutup (untuk diisi warna harus true)
+- `fill_rgb`: warna isi `[r,g,b]`; atau `fill_cmyk`: `[c,m,y,k]`
+- Default tanpa outline
 
-**画飘扬红旗思路：**
-1. 用 `create_curve_shape` 画红旗波浪外轮廓（顶部 2-3 段贝塞尔做波浪），填红色
-2. 再画几条深红/暗红曲线叠加表现褶皱阴影
-3. 旗杆用矩形或直线（可用 apply_operations 的 shape.create_rectangle）
+**Ide menggambar bendera berkibar:**
+1. Pakai `create_curve_shape` menggambar kontur luar bendera bergelombang (2-3 segmen Bezier di bagian atas untuk gelombang), isi merah
+2. Lalu gambar beberapa kurva merah tua/gelap yang ditumpuk untuk memberi kesan lipatan dan bayangan
+3. Tiang bendera dengan persegi atau garis (bisa memakai shape.create_rectangle dari apply_operations)
 
-**注意：** 贝塞尔控制点是绝对坐标，工具会自动转换，按视觉位置给即可。
+**Perhatian:** titik kontrol Bezier memakai koordinat absolut, tool otomatis mengonversinya; cukup beri sesuai posisi visual.
 
-## 渐变填充
+## Isi gradien
 
-给形状做渐变（线性/径向/圆锥/矩形）时，用 `apply_gradient_fill`。
+Untuk membuat gradien pada bentuk (linear/radial/conical/persegi), pakai `apply_gradient_fill`.
 
-**参数：**
-- `shape_id`：目标形状
-- `start_rgb` / `end_rgb`：起止颜色 `[r,g,b]`（或 `start_cmyk`/`end_cmyk`）
-- `gradient_type`：`"linear"`（线性，默认）/ `"radial"`（径向）/ `"conical"`（圆锥）/ `"square"`（矩形）
-- `angle`：角度，线性：0 从左到右，90 从下到上
-- `midpoint`：中点 0-100（默认 50）
-- `edge_pad`：边缘留白 0-49
-- `center_offset_x/y`：径向/圆锥中心偏移
-- `color_stops`：多色渐变中间色标，`[{"position":33,"rgb":[r,g,b]}]`；不传则双色
+**Parameter:**
+- `shape_id`: bentuk target
+- `start_rgb` / `end_rgb`: warna awal dan akhir `[r,g,b]` (atau `start_cmyk`/`end_cmyk`)
+- `gradient_type`: `"linear"` (linear, default) / `"radial"` (radial) / `"conical"` (conical) / `"square"` (persegi)
+- `angle`: sudut, untuk linear: 0 dari kiri ke kanan, 90 dari bawah ke atas
+- `midpoint`: titik tengah 0-100 (default 50)
+- `edge_pad`: ruang kosong tepi 0-49
+- `center_offset_x/y`: pergeseran pusat radial/conical
+- `color_stops`: titik warna tengah untuk gradien multiwarna, `[{"position":33,"rgb":[r,g,b]}]`; jika tidak diberikan maka dua warna
 
-**适用场景：** 海报背景、渐变底版、旗帜立体感、金属质感等。
+**Skenario penggunaan:** latar poster, alas gradien, kesan tiga dimensi bendera, tekstur logam, dll.

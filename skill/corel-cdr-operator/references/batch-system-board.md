@@ -1,49 +1,49 @@
-# 批量数据牌 / 制度牌（一次解析 + 批量排版）
+# Papan data / papan aturan massal (sekali parse + tata letak massal)
 
-把做好的一个模板底板，按数据批量复制成多块，每块替换标题和正文，自动网格排列。两个工具配合：`parse_board_records`（解析数据）→ `batch_system_board`（复制排版）。
+Menggandakan satu templat papan yang sudah jadi menjadi banyak papan sesuai data, tiap papan diganti judul dan isinya, dan disusun otomatis dalam grid. Dua tool bekerja bersama: `parse_board_records` (parse data) → `batch_system_board` (gandakan dan atur tata letak).
 
-## 完整流程
+## Alur lengkap
 
-**第 1 步：让用户做好模板并选中整个底板**
-- 模板 = 底板图形 + 标题文字 + 正文段落文字（一个完整的牌）。
-- 让用户在 CDR 里**框选整个模板底板（含标题、正文）并保持选中**。
-- 标题和正文自动识别：标题=字号最大的文字，正文=段落文本（无段落文本则取字数最多的），识别不准再让用户指定。
+**Langkah 1: Minta pengguna menyiapkan templat dan memilih seluruh papan**
+- Templat = bentuk papan dasar + teks judul + teks paragraf isi (satu papan lengkap).
+- Minta pengguna di CDR **memblok seluruh papan templat (termasuk judul dan isi) dan tetap memilihnya**.
+- Judul dan isi dikenali otomatis: judul = teks dengan ukuran font terbesar, isi = teks paragraf (jika tidak ada teks paragraf, ambil yang karakternya paling banyak); jika pengenalan kurang tepat, minta pengguna menentukannya.
 
-**第 2 步：获取数据（三种来源）**
-1. **Word（.doc/.docx）**：用 python-docx 直接读（不启动 Word，很快），按标题级别（标题1-9 样式，或短粗行自动识别）切分，每个标题一条、标题下正文是 body。
-   - **Word 表格不提取但会提醒**：表格内容不会被提取，解析结果会提示"检测到 N 个表格，表格内容未提取"。
-2. **Excel（.xls/.xlsx）**：每行一条，A 列=标题、B 列及以后=正文（有"标题/正文"表头会自动跳过）。
-3. **纯文本（对话直接发）**：标题用全角（）或半角()单独成行标记，其下到下一个标题之间是正文。格式：
+**Langkah 2: Ambil data (tiga sumber)**
+1. **Word (.doc/.docx)**: dibaca langsung dengan python-docx (tanpa menjalankan Word, sangat cepat), dipecah menurut tingkat judul (gaya Heading 1-9, atau baris pendek tebal dikenali otomatis), satu rekaman per judul, teks di bawah judul menjadi body.
+   - **Tabel Word tidak diekstrak tetapi diberi peringatan**: isi tabel tidak diambil, hasil parse akan memberi petunjuk "terdeteksi N tabel, isi tabel tidak diekstrak".
+2. **Excel (.xls/.xlsx)**: satu baris satu rekaman, kolom A = judul, kolom B dan seterusnya = isi (jika ada header "judul/isi" akan dilewati otomatis).
+3. **Teks biasa (dikirim langsung di percakapan)**: judul ditandai dengan tanda kurung lebar penuh （） atau biasa () pada baris tersendiri, teks di bawahnya hingga judul berikutnya adalah isi. Format:
    ```
-   （制度一）
-   第一条 ……
-   第二条 ……
-   （制度二）
-   第三条 ……
+   （Aturan Satu）
+   Pasal 1 ……
+   Pasal 2 ……
+   （Aturan Dua）
+   Pasal 3 ……
    ```
 
-**第 3 步：调 `parse_board_records` 解析**
-- 参数：
-  - 文件：`source_type`（"word"/"excel"，留空按扩展名）、`file_path`
-  - 对话文本：`text`（标题用（）标记）
-  - Word 可加 `heading_level`（1-9，0 自动）
-- 返回 `records`（每条 index/title/body）。
-- **解析成功后直接进入排版，不需要把记录逐条列给用户核对**（用户最后在 CDR 里校对）；只有解析失败/报错才停下来处理。
+**Langkah 3: Panggil `parse_board_records` untuk parse**
+- Parameter:
+  - File: `source_type` ("word"/"excel", kosongkan untuk mengikuti ekstensi), `file_path`
+  - Teks percakapan: `text` (judul ditandai dengan （）)
+  - Word dapat ditambah `heading_level` (1-9, 0 otomatis)
+- Mengembalikan `records` (tiap rekaman berisi index/title/body).
+- **Setelah parse berhasil langsung lanjut ke tata letak, tidak perlu mendaftar rekaman satu per satu untuk diperiksa pengguna** (pengguna memeriksa akhirnya di CDR); hanya jika parse gagal/error baru berhenti dan tangani.
 
-**第 4 步：确定列数（一排几个）**
-- **默认一排 4 个，不用问**。
-- 只有**记录数超过 12 个**时，才弹窗（数字选项）让用户确定一排几个。
-- 间距默认 10mm（用户没要求就用这个）。
+**Langkah 4: Tentukan jumlah kolom (berapa per baris)**
+- **Default 4 per baris, tidak perlu bertanya**.
+- Hanya jika **jumlah rekaman lebih dari 12**, tampilkan dialog (pilihan angka) agar pengguna menentukan berapa per baris.
+- Jarak default 10mm (pakai ini jika pengguna tidak meminta lain).
 
-**第 5 步：调 `batch_system_board` 一次完成**
-- 参数：`records`、`columns`（默认 4）、`gap`（默认 10）。
-- 工具内部：读选中模板 → 网格复制（保留原模板、从模板右侧开始）→ 替换标题/正文（保留字体/字号/字间距/对齐/行距）→ **正文太长自动缩该副本字号到刚好放下（其余副本不变，返回里 shrink_pt 标明）** → 每个副本群组。
+**Langkah 5: Panggil `batch_system_board` sekali jalan**
+- Parameter: `records`, `columns` (default 4), `gap` (default 10).
+- Secara internal tool: membaca templat terpilih → menggandakan dalam grid (templat asli dipertahankan, mulai dari sisi kanan templat) → mengganti judul/isi (mempertahankan font/ukuran/spasi huruf/perataan/spasi baris) → **jika isi terlalu panjang, ukuran font salinan itu dikecilkan otomatis hingga muat (salinan lain tidak berubah, shrink_pt tercantum di hasil)** → tiap salinan dijadikan grup.
 
-**第 6 步：完成后不渲染预览，直接提醒在 CDR 查看**
-- 提示"已生成 N 块，请在 CDR 中查看"，用户自己在 CDR 里校对。不自动保存。
+**Langkah 6: Setelah selesai jangan render pratinjau, langsung ingatkan untuk cek di CDR**
+- Beri tahu "sudah dibuat N papan, silakan cek di CDR", pengguna memeriksa sendiri di CDR. Tidak menyimpan otomatis.
 
-## 注意
+## Perhatian
 
-- 原模板保留，不覆盖。
-- 某块正文过长只会单独缩那一块，不影响其他块。
-- 解析报错（文件不存在、没有解析到记录、标题为空）时停下来告诉用户，不要硬排版。
+- Templat asli dipertahankan, tidak ditimpa.
+- Jika isi suatu papan terlalu panjang, hanya papan itu yang dikecilkan, tidak memengaruhi papan lain.
+- Jika parse error (file tidak ada, tidak ada rekaman terparse, judul kosong), berhenti dan beri tahu pengguna, jangan memaksakan tata letak.

@@ -1,50 +1,50 @@
-# 基础编辑：标准流程、apply_operations、定位元素
+# Edit dasar: alur standar, apply_operations, menentukan elemen
 
-## 标准操作流程
+## Alur operasi standar
 
-### 第 1 步：确认连接
-- 调 `corel_status` 确认 CDR 在线；CDR 没开时（你已明确要用）会自动启动，提示找不到就先手动打开 CorelDRAW。
+### Langkah 1: Pastikan koneksi
+- Panggil `corel_status` untuk memastikan CDR online; jika CDR belum terbuka (dan Anda sudah jelas ingin memakainya) akan dijalankan otomatis; jika tidak ditemukan, buka CorelDRAW secara manual dulu.
 
-### 第 2 步：绑定文档
-- 调 `attach_active_document` 拿 `session_id`；用户指定文档名则用 `attach_open_document` 传 `name_or_path`。
+### Langkah 2: Ikat dokumen
+- Panggil `attach_active_document` untuk mendapat `session_id`; jika pengguna menyebut nama dokumen, pakai `attach_open_document` dengan `name_or_path`.
 
-### 第 3 步：查看现状（必做）
-- 调 `inspect_document`（传 session_id），拿到所有形状的 `shape_id`、类型、位置、尺寸、文字内容。不能凭空猜 shape_id。
+### Langkah 3: Lihat kondisi saat ini (wajib)
+- Panggil `inspect_document` (dengan session_id) untuk mendapat `shape_id`, tipe, posisi, ukuran, dan isi teks semua bentuk. Tidak boleh menebak shape_id.
 
-### 第 4 步：执行修改
-- 调 `apply_operations`，传 `session_id`、`expected_revision`（第 3 步返回的 revision）、`label`（本次说明）、`operations`（操作数组，见下）。
+### Langkah 4: Jalankan perubahan
+- Panggil `apply_operations` dengan `session_id`, `expected_revision` (revision yang dikembalikan di langkah 3), `label` (keterangan perubahan ini), dan `operations` (array operasi, lihat di bawah).
 
-### 第 5 步：预览（可选）
-- 调 `render_preview` 渲染 PNG 给用户确认。
+### Langkah 5: Pratinjau (opsional)
+- Panggil `render_preview` untuk merender PNG agar dikonfirmasi pengguna.
 
-### 第 6 步：保存
-- 仅用户明确要求时调 `save_current_document`。
+### Langkah 6: Simpan
+- Panggil `save_current_document` hanya jika pengguna jelas memintanya.
 
-## 坐标系统
+## Sistem koordinat
 
-- 原点：页面左上角；X 向右增加；Y 向下增加；单位：毫米。
+- Titik asal: kiri atas halaman; X bertambah ke kanan; Y bertambah ke bawah; satuan: milimeter.
 
-## apply_operations 支持的操作
+## Operasi yang didukung apply_operations
 
-每个元素是一个操作对象，`op` 字段指定类型：
+Setiap elemen adalah objek operasi, dengan field `op` menentukan tipenya:
 
-| op 名称 | 作用 | 关键参数 |
+| Nama op | Fungsi | Parameter kunci |
 |---|---|---|
-| `text.set_content` | 改文字内容 | `shape_id`, `value` |
-| `text.set_style` | 改字体样式 | `shape_id`, `font_family`, `font_size_pt`, `bold` |
-| `text.create_frame` | 新建文字框 | `x_mm`, `y_mm`, `width_mm`, `height_mm`, `value`, `font_family`, `font_size_pt`, `bold` |
-| `shape.create_rectangle` | 画矩形 | `x_mm`, `y_mm`, `width_mm`, `height_mm`, `corner_radius` |
-| `shape.create_ellipse` | 画椭圆/圆（正圆令宽=高） | `x_mm`, `y_mm`, `width_mm`, `height_mm`, `fill_rgb`, `outline_rgb`, `outline_width_pt`, `no_outline` |
-| `shape.move` | 移动 | `shape_id`, `x_mm`, `y_mm` |
-| `shape.resize` | 缩放 | `shape_id`, `width_mm`, `height_mm` |
-| `shape.rotate` | 旋转 | `shape_id`, `angle_deg` |
-| `shape.delete` | 删除（⚠️ 仅用户明确点名） | `shape_id` |
-| `fill.set_cmyk` | CMYK 填色 | `shape_id`, `c`, `m`, `y`, `k`（0-100） |
-| `fill.set_rgb` | RGB 填色 | `shape_id`, `r`, `g`, `b`（0-255） |
+| `text.set_content` | Ubah isi teks | `shape_id`, `value` |
+| `text.set_style` | Ubah gaya font | `shape_id`, `font_family`, `font_size_pt`, `bold` |
+| `text.create_frame` | Buat frame teks baru | `x_mm`, `y_mm`, `width_mm`, `height_mm`, `value`, `font_family`, `font_size_pt`, `bold` |
+| `shape.create_rectangle` | Gambar persegi | `x_mm`, `y_mm`, `width_mm`, `height_mm`, `corner_radius` |
+| `shape.create_ellipse` | Gambar elips/lingkaran (lingkaran sempurna: lebar=tinggi) | `x_mm`, `y_mm`, `width_mm`, `height_mm`, `fill_rgb`, `outline_rgb`, `outline_width_pt`, `no_outline` |
+| `shape.move` | Pindahkan | `shape_id`, `x_mm`, `y_mm` |
+| `shape.resize` | Ubah ukuran | `shape_id`, `width_mm`, `height_mm` |
+| `shape.rotate` | Putar | `shape_id`, `angle_deg` |
+| `shape.delete` | Hapus (⚠️ hanya jika disebut jelas oleh pengguna) | `shape_id` |
+| `fill.set_cmyk` | Isi warna CMYK | `shape_id`, `c`, `m`, `y`, `k` (0-100) |
+| `fill.set_rgb` | Isi warna RGB | `shape_id`, `r`, `g`, `b` (0-255) |
 
-### 新建操作示例
+### Contoh operasi pembuatan
 
-新建文字框：
+Membuat frame teks baru:
 ```json
 {
   "op": "text.create_frame",
@@ -54,7 +54,7 @@
 }
 ```
 
-新建矩形：
+Membuat persegi baru:
 ```json
 {
   "op": "shape.create_rectangle",
@@ -63,16 +63,16 @@
 }
 ```
 
-能直接创建文字就不要让用户手动补；需要倾斜再调 `shape.rotate`。
+Jika teks bisa dibuat langsung, jangan minta pengguna menambahkannya manual; jika perlu miring, panggil `shape.rotate`.
 
-## 定位元素（改之前怎么精准找到目标）
+## Menentukan elemen (cara menemukan target dengan tepat sebelum mengubah)
 
-按优先级：
+Berdasarkan prioritas:
 
-1. **🔴 用户在 CDR 选中了 → `get_selection`（最快最准）**
-   - 读当前选中形状（多选、框选、群组），返回每个的 `shape_id`、类型、位置、尺寸、文字。
-   - 用户说"把这个改了""改我选中的"，或有重复/难描述元素时，先调它拿 ID 再改。
-   - count=0 提示用户先点选/框选，不瞎猜。
-2. **用户直接描述内容/位置 → `inspect_document`**
-   - 扫描整画布，按内容/位置匹配 shape_id。
-3. 截图仅作辅助参考，不能直接拿到 shape_id。
+1. **🔴 Pengguna sudah memilih di CDR → `get_selection` (tercepat dan paling akurat)**
+   - Membaca bentuk yang sedang dipilih (multi-pilih, pilih kotak, grup), mengembalikan `shape_id`, tipe, posisi, ukuran, teks tiap bentuk.
+   - Jika pengguna berkata "ubah yang ini" / "ubah yang saya pilih", atau ada elemen berulang/sulit dideskripsikan, panggil ini dulu untuk mendapat ID, baru ubah.
+   - Jika count=0, minta pengguna memilih/memblok dulu, jangan menebak.
+2. **Pengguna langsung mendeskripsikan isi/posisi → `inspect_document`**
+   - Memindai seluruh kanvas, mencocokkan shape_id berdasarkan isi/posisi.
+3. Tangkapan layar hanya sebagai referensi tambahan, tidak bisa langsung memberi shape_id.

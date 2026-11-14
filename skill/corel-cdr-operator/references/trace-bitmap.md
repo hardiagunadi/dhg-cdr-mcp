@@ -1,79 +1,79 @@
-# 临摹 / 描摹位图（位图转矢量轮廓）
+# Trace bitmap (mengubah bitmap menjadi kontur vektor)
 
-需要照着原图临摹（logo、文字、图形，把位图按轮廓转成可编辑矢量）时，用 `trace_bitmap`，它调用 Corel PowerTRACE 自动按轮廓生成矢量曲线，像钢笔工具沿轮廓描图。
+Jika perlu meniru gambar asli (logo, teks, grafik; mengubah bitmap menjadi vektor yang bisa diedit menurut kontur), pakai `trace_bitmap`, yang memanggil Corel PowerTRACE untuk membuat kurva vektor otomatis menurut kontur, seperti alat pen yang menelusuri kontur.
 
-## 🔴 第 0 步：提示词可能遗漏元素时，弹窗让用户选（条件触发，不啰嗦）
+## 🔴 Langkah 0: Jika prompt mungkin melewatkan elemen, tampilkan dialog agar pengguna memilih (dipicu bersyarat, tidak bertele-tele)
 
-用户常说"临摹文字/临摹这张图"，但图里可能同时有**中文、英文、logo、图形**等多类元素。**禁止自作主张只临摹其中一类**（如只临摹中文、漏掉英文和 logo）。
+Pengguna sering berkata "trace teks / trace gambar ini", tetapi di gambar bisa ada beberapa jenis elemen sekaligus: **huruf Mandarin, huruf Latin, logo, grafik**, dll. **Dilarang memutuskan sendiri hanya men-trace satu jenis** (mis. hanya Mandarin, melewatkan huruf Latin dan logo).
 
-做法：
-1. 先判断：用户提示词是否已明确涵盖要临摹的元素？
-   - 用户说了"全部/所有/整图/中文和英文都要"，或图里只有用户点名的那一类 → **直接进入第 1 步，不打断、不逐一列举**。
-2. **只有当用户说法笼统、而图里有多类元素、可能漏掉时**，才调 `interaction.ask` 弹窗，`display_message` 里**只点出可能被漏掉的部分**（不逐一长篇列举）：
-   - question_id：`trace_scope`；header：`临摹范围`
-   - display_message 示例：`图里除了中文，还有英文和 logo 可能被漏掉。这次要临摹哪些？`
-   - 选项：
-     1. option_id `all`，label `全部临摹（不遗漏）`，description：`中文、英文、logo、图形全部转矢量，不遗漏（默认推荐）。`
-     2. option_id `named_only`，label `只临摹我点名的`，description：`只临摹我刚才说的那部分（如只临摹中文）。`
-     3. option_id `custom`，label `我来指定`，description：`我具体说明要哪些、不要哪些。`
-   - 用户选定后再进入第 1 步。
-3. 拿不准用户意图时，按"不遗漏"处理，或直接弹窗。
+Caranya:
+1. Pertama tentukan: apakah prompt pengguna sudah jelas mencakup elemen yang akan di-trace?
+   - Jika pengguna berkata "semua/seluruh/seluruh gambar/Mandarin dan Latin keduanya", atau gambar hanya berisi jenis yang disebut pengguna → **langsung ke langkah 1, tanpa menyela, tanpa menyebut satu per satu**.
+2. **Hanya jika pengguna berbicara umum, sementara gambar berisi beberapa jenis elemen yang mungkin terlewat**, baru panggil dialog `interaction.ask`, dan di `display_message` **hanya sebut bagian yang mungkin terlewat** (tidak mendaftar panjang satu per satu):
+   - question_id: `trace_scope`; header: `Cakupan trace`
+   - Contoh display_message: `Selain huruf Mandarin, di gambar ada huruf Latin dan logo yang mungkin terlewat. Kali ini mau men-trace yang mana?`
+   - Pilihan:
+     1. option_id `all`, label `Trace semuanya (tanpa terlewat)`, description: `Huruf Mandarin, huruf Latin, logo, grafik semuanya menjadi vektor, tanpa terlewat (rekomendasi default).`
+     2. option_id `named_only`, label `Hanya yang saya sebut`, description: `Hanya men-trace bagian yang baru saja saya sebut (mis. hanya huruf Mandarin).`
+     3. option_id `custom`, label `Saya tentukan sendiri`, description: `Saya jelaskan secara rinci mana yang diinginkan dan mana yang tidak.`
+   - Setelah pengguna memilih, baru ke langkah 1.
+3. Jika tidak yakin dengan maksud pengguna, perlakukan sebagai "tanpa terlewat", atau langsung tampilkan dialog.
 
-## 🔴 第 1 步：让用户选择转矢量方式（必做）
+## 🔴 Langkah 1: Minta pengguna memilih cara konversi ke vektor (wajib)
 
-**先调 `interaction.ask` 让用户选模式**，把两种方式说明和推荐给到用户，再按选择执行；不要擅自决定。
+**Pertama panggil `interaction.ask` agar pengguna memilih mode**, jelaskan dua cara dan berikan rekomendasi kepada pengguna, lalu jalankan sesuai pilihan; jangan memutuskan sendiri.
 
-- question_id：`trace_mode`；header：`转矢量方式`
-- display_message：`请选择转矢量的方式（我也给出了推荐）：`
-- 选项：
-  1. option_id `direct`，label `直接转矢量`，description：`适合本身就干净、纯色/平涂背景的图（如图标、纯色背景文字图）。直接描摹，速度快，无需确认。`
-  2. option_id `cleanup`，label `先抠图确认再转（推荐）`，description：`适合照片、截图等带背景/阴影/立体感的图。先提取成干净平涂图给你确认，满意后再转矢量，效果最好。`
+- question_id: `trace_mode`; header: `Cara konversi vektor`
+- display_message: `Pilih cara konversi ke vektor (saya juga sertakan rekomendasi):`
+- Pilihan:
+  1. option_id `direct`, label `Langsung ke vektor`, description: `Cocok untuk gambar yang memang sudah bersih, latar warna solid/datar (mis. ikon, gambar teks dengan latar solid). Langsung trace, cepat, tanpa konfirmasi.`
+  2. option_id `cleanup`, label `Pisahkan latar dulu, konfirmasi baru konversi (direkomendasikan)`, description: `Cocok untuk foto, tangkapan layar, dan gambar dengan latar/bayangan/kesan 3D. Pertama diekstrak menjadi gambar datar yang bersih untuk Anda konfirmasi, setelah puas baru dikonversi ke vektor, hasil terbaik.`
 
-**给推荐：** 除非原图明显是干净的纯色/平涂图，否则推荐 `cleanup`，因为照片/复杂图直接转效果差。
+**Memberi rekomendasi:** kecuali gambar asli jelas bersih dan berwarna solid/datar, rekomendasikan `cleanup`, karena foto/gambar kompleks yang langsung dikonversi hasilnya buruk.
 
-用户选定后进入对应流程。
+Setelah pengguna memilih, lanjut ke alur yang sesuai.
 
-## 流程一：先抠图提纯，再描摹（cleanup，效果最好）
+## Alur satu: pisahkan latar dan murnikan dulu, baru trace (cleanup, hasil terbaik)
 
-PowerTRACE 对**干净、平涂、轮廓锐利**的图描摹效果最好；原始照片有复杂背景、阴影、立体厚度、渐变时，直接描摹效果很差。
+PowerTRACE paling baik pada gambar yang **bersih, datar, dengan kontur tajam**; foto asli dengan latar kompleks, bayangan, ketebalan 3D, gradien sangat buruk jika langsung di-trace.
 
-**第一步：用创意设计（image_edit 图生图）把目标提纯成干净图**
-- 完整保留目标元素的字形/造型、颜色、相对位置
-- 彻底移除背景，换成**纯白背景 #FFFFFF**（无纹理、渐变、噪点）
-- 去掉阴影、立体厚度、底部投影、暗边，做成平涂纯色图形
-- 让轮廓边缘干净锐利、无毛刺
-- 必要时多轮（用户说"去阴影/轮廓再清晰点"就再 image_edit）
+**Langkah pertama: gunakan desain kreatif (image_edit gambar ke gambar) untuk memurnikan target menjadi gambar bersih**
+- Pertahankan utuh bentuk huruf/bentuk, warna, dan posisi relatif elemen target
+- Hapus latar sepenuhnya, ganti dengan **latar putih polos #FFFFFF** (tanpa tekstur, gradien, noise)
+- Hilangkan bayangan, ketebalan 3D, bayangan bawah, tepi gelap, jadikan grafik datar warna solid
+- Buat tepi kontur bersih dan tajam, tanpa duri
+- Jika perlu beberapa putaran (jika pengguna berkata "hilangkan bayangan/kontur lebih jelas lagi", image_edit lagi)
 
-**第二步：🔴 必须停下来等用户确认，禁止自动继续描摹**
-- 抠完图后，先把提纯图展示给用户
-- 明确询问："这个效果满意吗？确认后我就转矢量；不满意我再修。"
-- **只有用户明确说"可以/确认/继续/描摹吧"，才进入第三步**；用户没确认前不得自动调 trace_bitmap
-- 用户不满意时，按反馈继续 image_edit 修正，修完再回到本步确认
+**Langkah kedua: 🔴 wajib berhenti menunggu konfirmasi pengguna, dilarang melanjutkan trace otomatis**
+- Setelah pemisahan latar, tampilkan dulu gambar yang sudah dimurnikan kepada pengguna
+- Tanyakan dengan jelas: "Apakah hasil ini sudah memuaskan? Setelah dikonfirmasi saya konversi ke vektor; jika belum puas saya perbaiki lagi."
+- **Hanya jika pengguna jelas berkata "boleh/konfirmasi/lanjut/silakan trace", baru ke langkah ketiga**; sebelum pengguna mengonfirmasi tidak boleh memanggil trace_bitmap otomatis
+- Jika pengguna tidak puas, lanjutkan image_edit sesuai masukan, setelah selesai kembali ke langkah ini untuk konfirmasi
 
-**第三步：用户确认后，把这张干净图走 `trace_bitmap`（传 image_path）描摹**
-- 干净图描摹出的矢量干净、节点规整，效果非常好
+**Langkah ketiga: setelah pengguna mengonfirmasi, jalankan gambar bersih ini dengan `trace_bitmap` (berikan image_path)**
+- Vektor hasil trace gambar bersih rapi, node teratur, hasilnya sangat baik
 
-## 流程二：直接描摹（direct）
+## Alur dua: trace langsung (direct)
 
-用户选了 `direct`，或原图本身已是干净的纯色/平涂图（如纯色背景 logo、图标）时，直接用 `trace_bitmap`，可加 `remove_background=true`，中途不需要确认。
+Jika pengguna memilih `direct`, atau gambar asli sudah bersih dan berwarna solid/datar (mis. logo latar solid, ikon), langsung pakai `trace_bitmap`, boleh menambah `remove_background=true`, tidak perlu konfirmasi di tengah.
 
-## 参数
+## Parameter
 
-- `image_path`：本地图片路径，传了就自动导入画布再描摹（最常用）
-- `shape_id`：描摹已在画布上的位图；留空则用当前页面唯一位图
-- `crop`：**只临摹图片中的一部分**（不是整张图）。格式 `[left, top, right, bottom]`，相对图片宽高比例 0-1（0,0=左上角，1,1=右下角）。先看图片确定目标区域比例，再裁剪描摹。
-- `trace_type`：描摹类型 1-8（1 线条图/色块，数值越大越偏图像），默认 1
-- `smoothing`：平滑度 0-100，默认 30（越大节点越少）
-- `detail_level`：细节 0-100，默认 100
-- `color_mode`：颜色模式，默认 2（跟随源图、保留彩色）
-- `color_count`：颜色数量，默认 16
-- `delete_original`：描摹后是否删除位图，默认 False
-- `remove_background`：是否自动去背景，默认 False
-- `place`：结果位置，**默认 `"beside"`（放在原图右侧并排显示，便于直接对比，且不删原图）**；`"over"` 为叠在原图上（会重影）。
+- `image_path`: path gambar lokal, jika diberikan otomatis diimpor ke kanvas lalu di-trace (paling sering dipakai)
+- `shape_id`: trace bitmap yang sudah ada di kanvas; jika kosong memakai satu-satunya bitmap di halaman saat ini
+- `crop`: **hanya men-trace sebagian gambar** (bukan seluruh gambar). Format `[left, top, right, bottom]`, rasio terhadap lebar/tinggi gambar 0-1 (0,0=kiri atas, 1,1=kanan bawah). Lihat gambar dulu untuk menentukan rasio area target, baru potong dan trace.
+- `trace_type`: jenis trace 1-8 (1 gambar garis/blok warna, makin besar makin condong ke gambar), default 1
+- `smoothing`: kehalusan 0-100, default 30 (makin besar node makin sedikit)
+- `detail_level`: detail 0-100, default 100
+- `color_mode`: mode warna, default 2 (mengikuti gambar asli, mempertahankan warna)
+- `color_count`: jumlah warna, default 16
+- `delete_original`: apakah bitmap dihapus setelah trace, default False
+- `remove_background`: apakah latar dihapus otomatis, default False
+- `place`: posisi hasil, **default `"beside"` (diletakkan di sisi kanan gambar asli berdampingan, mudah dibandingkan langsung, dan gambar asli tidak dihapus)**; `"over"` ditumpuk di atas gambar asli (akan bertumpuk).
 
-## 典型说法
+## Ucapan umum
 
-- "把这张照片里的招牌字提取出来，白色背景，去掉阴影" → 先 image_edit 提纯
-- 用户确认干净图后："把这张图临摹成矢量" → 再 trace_bitmap
-- 只临摹图里一部分时，在提纯阶段就让 image_edit 只保留目标（比 crop 更干净）
-- **描摹后结果默认放在原图右侧并排显示**，左边原图、右边矢量，不用删原图、也不会重影错位
+- "Ambil huruf papan nama dari foto ini, latar putih, hilangkan bayangan" → image_edit dulu untuk dimurnikan
+- Setelah pengguna mengonfirmasi gambar bersih: "trace gambar ini menjadi vektor" → baru trace_bitmap
+- Jika hanya men-trace sebagian gambar, pada tahap pemurnian suruh image_edit hanya mempertahankan targetnya (lebih bersih daripada crop)
+- **Setelah trace, hasil default diletakkan di sisi kanan gambar asli berdampingan**, kiri gambar asli, kanan vektor, tidak perlu menghapus gambar asli, dan tidak akan bertumpuk atau bergeser
