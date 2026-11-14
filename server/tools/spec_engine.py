@@ -31,30 +31,39 @@ def _rgb(c):
     return [int(round(v)) for v in c]
 
 
+def _cmyk(color, rgb):
+    """Assign an RGB design value, then convert the colour to CMYK so the artwork is print-ready."""
+    color.RGBAssign(*_rgb(rgb))
+    try:
+        color.ConvertToCMYK()
+    except Exception:
+        pass
+
+
 def _apply_style(app, shape, op, warnings):
     # ---- fill
     grad = op.get("gradient")
     if grad:
         stops = grad["stops"]  # [[pos0-100,[r,g,b]], ...]  first/last = start/end
-        c1 = app.CreateColor(); c1.RGBAssign(*_rgb(stops[0][1]))
-        c2 = app.CreateColor(); c2.RGBAssign(*_rgb(stops[-1][1]))
+        c1 = app.CreateColor(); _cmyk(c1, stops[0][1])
+        c2 = app.CreateColor(); _cmyk(c2, stops[-1][1])
         shape.Fill.ApplyFountainFill(
             StartColor=c1, EndColor=c2, Type=_FOUNTAIN_LINEAR,
             Angle=float(grad.get("angle", 90)), Steps=0, EdgePad=0, MidPoint=50,
         )
         f = shape.Fill.Fountain
         for pos, col in stops[1:-1]:
-            cc = app.CreateColor(); cc.RGBAssign(*_rgb(col))
+            cc = app.CreateColor(); _cmyk(cc, col)
             f.Colors.Add(cc, float(pos))
     elif op.get("fill") is not None:
-        shape.Fill.UniformColor.RGBAssign(*_rgb(op["fill"]))
+        _cmyk(shape.Fill.UniformColor, op["fill"])
     else:
         shape.Fill.ApplyNoFill()
 
     # ---- outline
     if op.get("stroke") is not None:
         shape.Outline.Width = float(op.get("stroke_w", 0.3))
-        shape.Outline.Color.RGBAssign(*_rgb(op["stroke"]))
+        _cmyk(shape.Outline.Color, op["stroke"])
         if op.get("round"):
             try:
                 shape.Outline.LineJoin = 2
@@ -90,7 +99,7 @@ def _apply_style(app, shape, op, warnings):
     sh = op.get("shadow")
     if sh:
         try:
-            col = app.CreateColor(); col.RGBAssign(*_rgb(sh.get("color", [18, 54, 95])))
+            col = app.CreateColor(); _cmyk(col, sh.get("color", [18, 54, 95]))
             shape.CreateDropShadow(
                 Type=0, Opacity=int(sh.get("opacity", 20)), Feather=float(sh.get("blur", 8)),
                 OffsetX=float(sh.get("dx", 0)), OffsetY=float(sh.get("dy", -6)), Color=col,
@@ -180,7 +189,14 @@ def _op_text(ctx, op):
         _set_text_size(s.Text, size)
         if op.get("bold"):
             _set_text_bold(s.Text, True)
-    s.Fill.UniformColor.RGBAssign(*_rgb(op.get("color", [0, 0, 0])))
+    if op.get("bold"):
+        # CreateArtisticText(Bold=...) is silently ignored on some builds; set it on the story as well.
+        try:
+            from tools.text import _set_text_bold
+            _set_text_bold(s.Text, True)
+        except Exception:
+            pass
+    _cmyk(s.Fill.UniformColor, op.get("color", [0, 0, 0]))
     try:
         s.Outline.SetNoOutline()
     except Exception:
@@ -326,7 +342,7 @@ def _op_match(ctx, op):
             s.BottomY = float(s.BottomY) - float(op.get("dy", 0))   # dy > 0 moves down (top-left coords)
         elif op.get("action") == "shadow":
             sh = op["shadow"]
-            col = ctx["app"].CreateColor(); col.RGBAssign(*_rgb(sh.get("color", [0, 0, 0])))
+            col = ctx["app"].CreateColor(); _cmyk(col, sh.get("color", [0, 0, 0]))
             s.CreateDropShadow(Type=0, Opacity=int(sh.get("opacity", 60)), Feather=float(sh.get("blur", 8)),
                                OffsetX=float(sh.get("dx", 0)), OffsetY=float(sh.get("dy", 0)), Color=col)
     ctx["measure"].append({"match": len(hits), "action": op.get("action")})
@@ -469,6 +485,10 @@ def _op_list(ctx, op):
             row["in"] = parents[-1]
         if _safe_attr(s, "Name", ""):
             row["name"] = str(s.Name)
+        try:
+            row["fill_type"] = int(s.Fill.UniformColor.Type)   # cdrColorType: 2 = CMYK, 3 = RGB
+        except Exception:
+            pass
         if t == 6:   # cdrTextShape
             try:
                 row["text"] = str(s.Text.Story.Text)[:60]
