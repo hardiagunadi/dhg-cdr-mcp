@@ -10,6 +10,9 @@ Ops
   text     text x y(ink top) [w(ink width)] font size_pt color [bold] [name]
   image    path x y w h [name]
   order    target to:"back"|"front"
+  scale_page  w h [factor]   resize the page and scale all artwork about the page top-left
+  move     target|targets [x|cx] [y] [dx] [dy]   reposition without resizing
+  list     [y_min] [y_max]   read-only shape listing (set "measure_limit" in the spec to see rows)
   stroke style keys: stroke=[r,g,b]  stroke_w=mm  dash=true  cap/join rounded when "round":true
 """
 
@@ -19,7 +22,7 @@ import math
 import os
 from typing import Any
 
-from core.operations import _with_bottom_left_reference, _safe_attr
+from core.operations import _with_bottom_left_reference, _safe_attr, _walk_shapes
 
 _FOUNTAIN_LINEAR = 1
 
@@ -102,7 +105,7 @@ def _apply_style(app, shape, op, warnings):
 def _find(doc, target, named):
     if target in named:
         return named[target]
-    for s in doc.ActivePage.Shapes:
+    for s, _ in _walk_shapes(doc.ActivePage.Shapes):   # also inside groups / PowerClip contents
         if str(s.StaticID) == str(target) or str(_safe_attr(s, "Name", "")) == str(target):
             return s
     raise ValueError(f"shape not found: {target}")
@@ -240,6 +243,10 @@ def _op_place(ctx, op):
     s = _find(ctx["doc"], op["target"], ctx["named"])
     ph = ctx["ph"]
     x, y, w, h = float(op["x"]), float(op["y"]), float(op["w"]), float(op["h"])
+    try:
+        s.Outline.ScaleWithShape = False   # a re-box is a layout change: keep the stroke weight
+    except Exception:
+        pass
     s.SetSize(w, h)
     s.LeftX = x
     s.BottomY = ph - (y + h)
@@ -398,7 +405,81 @@ def _op_clear(ctx, op):
     return None
 
 
-_OPS = {"clear": _op_clear, "goto_page": _op_goto_page, "new_page": _op_new_page, "save": _op_save, "save_as": _op_save_as, "match": _op_match, "restyle": _op_restyle, "place": _op_place, "clip": _op_clip, "rect": _op_rect, "ellipse": _op_ellipse, "curve": _op_curve,
+def _op_scale_page(ctx, op):
+    """Resize the active page to w x h and scale every shape by `factor` (default: fit inside) about the page top-left.
+
+    Outlines, corner radii and text sizes scale with the artwork, so the result stays editable.
+    """
+    page = ctx["page"]
+    pw, ph = float(page.SizeWidth), float(page.SizeHeight)
+    w, h = float(op["w"]), float(op["h"])
+    f = float(op.get("factor") or min(w / pw, h / ph))
+    for s, _ in _walk_shapes(page.Shapes):
+        try:
+            s.Outline.ScaleWithShape = True
+        except Exception:
+            pass
+        try:
+            s.Rectangle.RelativeCornerScaling = True
+        except Exception:
+            pass
+    rng = page.Shapes.All()
+    rng.StretchEx(0.0, ph, f, f, True)          # anchor = page top-left; True = scale paragraph text too
+    x, y = float(rng.LeftX), ph - float(rng.TopY)
+    page.SetSize(w, h)
+    rng.Move(x - float(rng.LeftX), (h - y) - float(rng.TopY))   # keep top-left mm position whatever SetSize did
+    ctx["ph"] = h
+    ctx["measure"].append({"scaled": round(f, 6), "page": [w, h]})
+    return None
+
+
+def _op_move(ctx, op):
+    """Move shapes without resizing. target | targets:[...]; absolute x|cx, y (top-left mm) and/or relative dx, dy (dy>0 = down)."""
+    ph = ctx["ph"]
+    for t in op.get("targets") or [op["target"]]:
+        s = _find(ctx["doc"], t, ctx["named"])
+        w, h = float(s.SizeWidth), float(s.SizeHeight)
+        if "cx" in op:
+            s.LeftX = float(op["cx"]) - w / 2.0
+        if "x" in op:
+            s.LeftX = float(op["x"])
+        if "y" in op:
+            s.BottomY = ph - float(op["y"]) - h
+        if op.get("dx"):
+            s.LeftX = float(s.LeftX) + float(op["dx"])
+        if op.get("dy"):
+            s.BottomY = float(s.BottomY) - float(op["dy"])
+    return None
+
+
+def _op_list(ctx, op):
+    """Read-only: report shapes (nested too) as top-left mm boxes with type/name/text. Optional y_min / y_max filter."""
+    ph = ctx["ph"]
+    lo, hi = float(op.get("y_min", -1e9)), float(op.get("y_max", 1e9))
+    for s, parents in _walk_shapes(ctx["page"].Shapes):
+        try:
+            x, y, w, h = float(s.LeftX), ph - float(s.TopY), float(s.SizeWidth), float(s.SizeHeight)
+        except Exception:
+            continue
+        if y + h < lo or y > hi:
+            continue
+        t = int(_safe_attr(s, "Type", -1))
+        row = {"id": int(s.StaticID), "t": t, "box": [round(v, 1) for v in (x, y, w, h)]}
+        if parents:
+            row["in"] = parents[-1]
+        if _safe_attr(s, "Name", ""):
+            row["name"] = str(s.Name)
+        if t == 6:   # cdrTextShape
+            try:
+                row["text"] = str(s.Text.Story.Text)[:60]
+                row["pt"] = round(float(s.Text.Story.Size), 1)
+            except Exception:
+                pass
+        ctx["measure"].append(row)
+    return None
+
+
+_OPS = {"scale_page": _op_scale_page, "move": _op_move, "list": _op_list, "clear": _op_clear, "goto_page": _op_goto_page, "new_page": _op_new_page, "save": _op_save, "save_as": _op_save_as, "match": _op_match, "restyle": _op_restyle, "place": _op_place, "clip": _op_clip, "rect": _op_rect, "ellipse": _op_ellipse, "curve": _op_curve,
         "text": _op_text, "image": _op_image, "order": _op_order}
 
 
