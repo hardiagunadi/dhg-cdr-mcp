@@ -68,7 +68,7 @@ def setup_logging(is_stdio: bool = False):
 
 
 def register_tools():
-    from tools import live, search, shapes, board, proofread
+    from tools import live, search, shapes, board, proofread, spec_builder
 
     # Compact is the production default: a small, session-safe tool surface is
     # more reliable across models.  Set COREL_TOOL_PROFILE=legacy to expose the
@@ -88,6 +88,7 @@ def register_tools():
         live.save_document_as,
         live.export_document,
         live.detach_document,
+        spec_builder.build_from_spec,
         shapes.import_bitmap,
         shapes.import_svg,
         shapes.replace_bitmap,
